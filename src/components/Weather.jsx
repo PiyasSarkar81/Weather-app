@@ -11,7 +11,9 @@ import wind_icon from "../assets/wind.png";
 
 const Weather = () => {
   const inputRef = useRef(null);
-  const [weatherData, setWeatherData] = useState(false);
+  const [weatherData, setWeatherData] = useState(null); // Tracks weather data
+  const [errorMessage, setErrorMessage] = useState(""); // Tracks error messages
+
   const allIcons = {
     "01d": clear_icon,
     "01n": clear_icon,
@@ -28,9 +30,10 @@ const Weather = () => {
     "13d": snow_icon,
     "13n": snow_icon,
   };
+
   const search = async (city) => {
-    if (city === "") {
-      alert("Enter a city name");
+    if (!city.trim()) {
+      setErrorMessage("Please enter a valid city name");
       return;
     }
 
@@ -43,65 +46,91 @@ const Weather = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.message);
+        setErrorMessage(data.message || "City not found. Please try again.");
+        setWeatherData(null);
         return;
       }
 
-      console.log(data);
       const icon = allIcons[data.weather[0].icon] || clear_icon;
 
       setWeatherData({
-        temparature: Math.floor(data.main.temp),
+        temperature: Math.floor(data.main.temp),
         location: data.name,
+        country: data.sys.country,
         humidity: data.main.humidity,
         windSpeed: data.wind.speed,
+        weatherCondition: data.weather[0].main,
         icon: icon,
       });
+
+      setErrorMessage("");
     } catch (error) {
-      console.log(error);
-      setWeatherData(false);
+      console.error("Error fetching weather data:", error);
+      setErrorMessage("An error occurred while fetching weather data.");
+      setWeatherData(null);
     }
   };
 
   useEffect(() => {
-    search("");
+    search("Kolkata");
   }, []);
 
   return (
-    <div className="weather">
+    <div className="weather-dashboard">
+      {/* Search Bar */}
       <div className="search-bar">
-        <input ref={inputRef} type="text" placeholder="Search" />
-        <img
-          src={search_icon}
-          alt="search icon"
-          onClick={() => search(inputRef.current.value)}
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Search for a city..."
+          className="search-input"
         />
+        <button
+          className="search-button"
+          onClick={() => search(inputRef.current.value)}
+        >
+          <img src={search_icon} alt="search icon" />
+        </button>
       </div>
 
+      {/* Error Message */}
+      {errorMessage && <div className="error-message">{errorMessage}</div>}
+
+      {/* Weather Information */}
       {weatherData ? (
-        <>
-          <img src={weatherData.icon} alt="" className="weather-icon" />
-          <p className="temparature">{weatherData.temparature}°C</p>
-          <p className="location">{weatherData.location}</p>
-          <div className="weather-data">
-            <div className="col">
-              <img src={humidity_icon} alt="" />
+        <div className="weather-info">
+          <div className="weather-header">
+            <img
+              src={weatherData.icon}
+              alt="weather icon"
+              className="weather-icon"
+            />
+            <div className="temperature">{weatherData.temperature}°C</div>
+            <div className="location">
+              {weatherData.location}, {weatherData.country}
+            </div>
+            <div className="condition">{weatherData.weatherCondition}</div>
+          </div>
+
+          <div className="weather-details">
+            <div className="detail-item">
+              <img src={humidity_icon} alt="humidity icon" />
               <div>
-                <p>{weatherData.humidity} % </p>
+                <p>{weatherData.humidity}%</p>
                 <span>Humidity</span>
               </div>
             </div>
-            <div className="col">
-              <img src={wind_icon} alt="" />
+            <div className="detail-item">
+              <img src={wind_icon} alt="wind icon" />
               <div>
-                <p>{weatherData.windSpeed} Km/h </p>
+                <p>{weatherData.windSpeed} km/h</p>
                 <span>Wind Speed</span>
               </div>
             </div>
           </div>
-        </>
+        </div>
       ) : (
-        <></>
+        !errorMessage && <div className="loading">Loading weather data...</div>
       )}
     </div>
   );
